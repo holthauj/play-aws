@@ -41,34 +41,34 @@ public class AwsSignatureFilter implements WSRequestFilter {
 	private static final String API_GATEWAY_SERVICE_NAME = "execute-api";
 	private final Materializer materializer;
 	private final Region region;
-	
+
 	public AwsSignatureFilter(Materializer materializer, Region region) {
 		this.materializer = Objects.requireNonNull(materializer);
 		this.region = Objects.requireNonNull(region);
 	}
-	
+
 	@Override
 	public WSRequestExecutor apply(WSRequestExecutor requestExecutor) {
 		return request -> {
 			BodyWritable<?> bodyWritable = request.getBody().orElse(null);
 			request.sign(new AwsSignatureCalculator(bodyWritable));
-            return requestExecutor.apply(request);
-        };
+			return requestExecutor.apply(request);
+		};
 	}
-	
+
 	private class AwsSignatureCalculator implements WSSignatureCalculator, SignatureCalculator {
 		private final BodyWritable<?> bodyWritable;
-		
-        private AwsSignatureCalculator(BodyWritable<?> bodyWritable) {
-        	this.bodyWritable = bodyWritable;
-        }
+
+		private AwsSignatureCalculator(BodyWritable<?> bodyWritable) {
+			this.bodyWritable = bodyWritable;
+		}
 
 		@Override
 		public void calculateAndAddSignature(Request unsignedRequest, RequestBuilderBase<?> requestBuilder) {
 			SdkHttpFullRequest signedRequest = this.getSignedRequest(unsignedRequest);
 			requestBuilder.setHeaders(signedRequest.headers());
 		}
-		
+
 		private SdkHttpFullRequest getSignedRequest(Request unsignedRequest) {
 			Uri uri = unsignedRequest.getUri();
 			try(InputStream contentStream = this.getContentStream()) {
@@ -83,19 +83,19 @@ public class AwsSignatureFilter implements WSRequestFilter {
 							unsignedRequest.getQueryParams().forEach(p -> mutator.appendRawQueryParameter(decode(p.getName()), decode(p.getValue())));
 						})
 						.build();
-				
+
 				Aws4SignerParams signingParams = Aws4SignerParams.builder()
 						.awsCredentials(DefaultCredentialsProvider.create().resolveCredentials())
 						.signingName(API_GATEWAY_SERVICE_NAME)
 						.signingRegion(region)
 						.build();
-				
+
 				return Aws4Signer.create().sign(fullRequest, signingParams);
 			} catch (IOException e) {
 				throw new UncheckedIOException(e);
 			}
 		}
-		
+
 		private InputStream getContentStream() {
 			if (bodyWritable instanceof InMemoryBodyWritable) {
 				ByteString byteString = ((InMemoryBodyWritable) bodyWritable).body().get();
@@ -104,10 +104,10 @@ public class AwsSignatureFilter implements WSRequestFilter {
 				Source<ByteString, ?> source = ((SourceBodyWritable) bodyWritable).body().get();
 				return source.runWith(StreamConverters.asInputStream(Duration.ofSeconds(30)), materializer);
 			} else {
-	            return new ByteArrayInputStream(new byte[0]);
-	        }
+				return new ByteArrayInputStream(new byte[0]);
+			}
 		}
-		
+
 		private String decode(String encoded) {
 			try {
 				return URLDecoder.decode(encoded, StandardCharsets.UTF_8.name());
@@ -115,5 +115,5 @@ public class AwsSignatureFilter implements WSRequestFilter {
 				throw new UncheckedIOException(e);
 			}
 		}
-    }
+	}
 }
