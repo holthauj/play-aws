@@ -30,6 +30,9 @@ import software.amazon.awssdk.auth.signer.params.Aws4SignerParams;
 import software.amazon.awssdk.http.SdkHttpFullRequest;
 import software.amazon.awssdk.http.SdkHttpMethod;
 import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.regions.providers.AwsRegionProvider;
+import software.amazon.awssdk.regions.providers.DefaultAwsRegionProviderChain;
+import software.amazon.awssdk.regions.providers.LazyAwsRegionProvider;
 
 /**
  * Base class for signing AWS requests
@@ -39,12 +42,13 @@ import software.amazon.awssdk.regions.Region;
  */
 public class AwsSignatureFilter implements WSRequestFilter {
 	private static final String API_GATEWAY_SERVICE_NAME = "execute-api";
+	private static final AwsRegionProvider DEFAULT_REGION_PROVIDER = new LazyAwsRegionProvider(DefaultAwsRegionProviderChain::new);
 	private final Materializer materializer;
 	private final Region region;
 
-	public AwsSignatureFilter(Materializer materializer, Region region) {
+	public AwsSignatureFilter(Materializer materializer) {
 		this.materializer = Objects.requireNonNull(materializer);
-		this.region = Objects.requireNonNull(region);
+		this.region = DEFAULT_REGION_PROVIDER.getRegion();
 	}
 
 	@Override

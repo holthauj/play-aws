@@ -2,6 +2,7 @@
 /.cache-tests
 /.tmpBin
 /.classpath
+/.idea
 /.project
 /.settings
 /bin
