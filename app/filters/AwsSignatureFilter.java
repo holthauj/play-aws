@@ -1,15 +1,5 @@
 package filters;
 
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.UncheckedIOException;
-import java.io.UnsupportedEncodingException;
-import java.net.URLDecoder;
-import java.nio.charset.StandardCharsets;
-import java.time.Duration;
-import java.util.Objects;
-
 import akka.stream.Materializer;
 import akka.stream.javadsl.Source;
 import akka.stream.javadsl.StreamConverters;
@@ -29,13 +19,22 @@ import software.amazon.awssdk.auth.signer.Aws4Signer;
 import software.amazon.awssdk.auth.signer.params.Aws4SignerParams;
 import software.amazon.awssdk.http.SdkHttpFullRequest;
 import software.amazon.awssdk.http.SdkHttpMethod;
-import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.regions.providers.AwsRegionProvider;
 import software.amazon.awssdk.regions.providers.DefaultAwsRegionProviderChain;
 import software.amazon.awssdk.regions.providers.LazyAwsRegionProvider;
 
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.UncheckedIOException;
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.util.Objects;
+
 /**
- * Base class for signing AWS requests
+ * Request Filter for signing AWS requests
  * 
  * @see <a href="https://docs.aws.amazon.com/general/latest/gr/sigv4_signing.html">sigv4_signing</a>
  * @see <a href="https://docs.aws.amazon.com/apigateway/latest/developerguide/how-to-call-api.html">how-to-call-api</a>
@@ -43,12 +42,11 @@ import software.amazon.awssdk.regions.providers.LazyAwsRegionProvider;
 public class AwsSignatureFilter implements WSRequestFilter {
 	private static final String API_GATEWAY_SERVICE_NAME = "execute-api";
 	private static final AwsRegionProvider DEFAULT_REGION_PROVIDER = new LazyAwsRegionProvider(DefaultAwsRegionProviderChain::new);
+	private static final Aws4Signer DEFAULT_SIGNER = Aws4Signer.create();
 	private final Materializer materializer;
-	private final Region region;
 
 	public AwsSignatureFilter(Materializer materializer) {
 		this.materializer = Objects.requireNonNull(materializer);
-		this.region = DEFAULT_REGION_PROVIDER.getRegion();
 	}
 
 	@Override
@@ -91,10 +89,10 @@ public class AwsSignatureFilter implements WSRequestFilter {
 				Aws4SignerParams signingParams = Aws4SignerParams.builder()
 						.awsCredentials(DefaultCredentialsProvider.create().resolveCredentials())
 						.signingName(API_GATEWAY_SERVICE_NAME)
-						.signingRegion(region)
+						.signingRegion(DEFAULT_REGION_PROVIDER.getRegion())
 						.build();
 
-				return Aws4Signer.create().sign(fullRequest, signingParams);
+				return DEFAULT_SIGNER.sign(fullRequest, signingParams);
 			} catch (IOException e) {
 				throw new UncheckedIOException(e);
 			}
