@@ -47,3 +47,25 @@ public class MyClient {
   }
 }
 ```
+
+## SourceAsyncResponseTransformer
+This is an AsyncResponseTransformer that can be used with an SdkClient to transform the response into an Akka Source
+
+### Example Usage
+```
+import javax.inject.Inject;
+
+import play.mvc.*;
+import software.amazon.awssdk.services.s3.S3AsyncClient;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+
+public class MyClient {
+  private final S3AsyncClient s3 = S3AsyncClient.builder().build();
+
+  public CompletionStage<Result> download(String bucket, String key) {
+    GetObjectRequest request = GetObjectRequest.builder().bucket(bucket).key(key).build();
+    return s3.getObject(request, new SourceAsyncResponseTransformer<>()).thenApply(response ->
+      Results.ok().chunked(response.asSource()).as(response.response().contentType());
+  }
+}
+```
